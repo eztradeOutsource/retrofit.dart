@@ -16,7 +16,7 @@ environment:
 dependencies:
   analyzer: '>=6.9.0 <8.0.0'
   macros: ^0.0.1
-  build: ^2.4.1
+  build: ^3.0.0
   built_collection: ^5.1.1
   code_builder: ^4.10.0
   dart_style: '>=2.3.7 <4.0.0'
