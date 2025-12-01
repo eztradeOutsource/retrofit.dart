@@ -1,4 +1,42 @@
-# Changelog
+## 4.9.1 (Unreleased)
+- Make Response parameter in ParseErrorLogger callback optional for backward compatibility
+  - The `response` parameter in `logError` is now a named optional parameter `{Response? response}`
+  - This allows existing implementations without the response parameter to continue working
+
+## 4.9.0
+- Version bump to 4.9.0
+
+## 4.8.0
+- Add global headers support to @RestApi annotation
+- This version is required for retrofit_generator 10.1.0+
+
+## 4.7.2
+- Add comments for each public methods
+- Enable linter rules for public api docs
+
+## 4.7.1
+- update to new tag format with prefix letter v
+
+## 4.7.0
+
+- Updates minimum supported SDK version to Dart 3.8.
+
+## 4.5.0
+
+- Added `@BodyExtra` annotation to support adding individual fields to request body, enhancing flexibility and extensibility.
+
+  Example :
+
+  ```dart
+  @http.POST('/path/')
+  Future<String> updateValue(@BodyExtra('id') int id, @BodyExtra('value') String value);
+  ```
+
+  The request body will be：
+  
+  ```json
+  {"id": 123, "value": "some value"}
+  ```
 
 ## 4.4.2
 

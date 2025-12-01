@@ -1,9 +1,17 @@
 /// Adapts a Call with return type R into the type of T.
 /// e.g. `Future<User>` to `Future<Result<User>>`
 abstract class CallAdapter<R, T> {
+  /// Adapts the given [call] function to return type [T].
+  ///
+  /// This method transforms the original call (which returns [R]) into
+  /// a new format (returning [T]). Implementations typically wrap the
+  /// result in error handling, logging, or other cross-cutting concerns.
+  ///
+  /// * [call] - A function that executes the original API call
+  ///
+  /// Returns the adapted result of type [T].
   T adapt(R Function() call);
 }
-
 
 /// By annotating a method with `@UseCallAdapter`, you can specify a custom adapter
 /// class where you can adapt a call to another response wrapper
@@ -13,9 +21,9 @@ abstract class CallAdapter<R, T> {
 /// 1. Create the call adapter by extending [CallAdapter]:
 /// pass in type parameters for the original call return type and adapted call return type.
 /// Note: your adapter subclass must accept a single type parameter(T), where T is
-/// the type of the unwrapped response from the original call. e.g. 
+/// the type of the unwrapped response from the original call. e.g.
 /// `UserResponse` in `Future<UserResponse>`
-/// 
+///
 /// ```dart
 /// class ResultCallAdapter<T> extends CallAdapter<Future<T>, Future<Result<T>>> {
 ///   @override
@@ -26,7 +34,7 @@ abstract class CallAdapter<R, T> {
 ///     } catch (e) {
 ///       return Error(e);
 ///     }
-///   } 
+///   }
 /// }
 
 /// ```
@@ -48,6 +56,10 @@ abstract class CallAdapter<R, T> {
 /// }
 /// ```
 class UseCallAdapter {
+  /// Creates a new [UseCallAdapter] annotation with the specified [callAdapter].
+  ///
+  /// * [callAdapter] - The type of the call adapter class to use for this method
   const UseCallAdapter(this.callAdapter);
+
   final Type callAdapter;
 }

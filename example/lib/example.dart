@@ -1,5 +1,6 @@
 import 'dart:convert' show jsonEncode;
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart' hide Headers;
 import 'package:json_annotation/json_annotation.dart';
@@ -7,6 +8,13 @@ import 'package:retrofit/retrofit.dart';
 import 'package:retrofit_example/api_result.dart';
 
 part 'example.g.dart';
+
+// Extension type examples for query parameters
+extension type UserId(String id) implements String {}
+
+extension type CustomParam(String value) implements String {
+  String toJson() => value;
+}
 
 @RestApi(baseUrl: 'https://5d42a6e2bc64f90014a56ca0.mockapi.io/api/v1/')
 abstract class RestClient {
@@ -88,10 +96,74 @@ abstract class RestClient {
   @POST('http://httpbin.org/post')
   Future<void> createNewTaskFromFile(@Part() File file);
 
+  /// Example demonstrating runtime contentType for multipart uploads
+  /// using @PartMap annotation.
+  ///
+  /// This allows uploading different file types to the same endpoint
+  /// by providing the contentType at runtime rather than compile-time.
+  ///
+  /// Example usage:
+  /// ```dart
+  /// // Upload a JPEG image
+  /// await client.uploadFileWithMetadata(
+  ///   file: File('/path/to/image.jpg'),
+  ///   metadata: {
+  ///     'file_contentType': 'image/jpeg',
+  ///     'file_fileName': 'photo.jpg',
+  ///   },
+  /// );
+  ///
+  /// // Upload a PNG image with the same method
+  /// await client.uploadFileWithMetadata(
+  ///   file: File('/path/to/image.png'),
+  ///   metadata: {
+  ///     'file_contentType': 'image/png',
+  ///     'file_fileName': 'screenshot.png',
+  ///   },
+  /// );
+  ///
+  /// // Upload a PDF document
+  /// await client.uploadFileWithMetadata(
+  ///   file: File('/path/to/document.pdf'),
+  ///   metadata: {
+  ///     'file_contentType': 'application/pdf',
+  ///     'file_fileName': 'report.pdf',
+  ///   },
+  /// );
+  /// ```
+  @POST('http://httpbin.org/post')
+  @MultiPart()
+  Future<void> uploadFileWithMetadata({
+    @Part(name: 'file') required File file,
+    @PartMap() Map<String, dynamic>? metadata,
+  });
+
+  /// Example of uploading multiple files with dynamic field names.
+  ///
+  /// This is useful when you need to send files with indexed names like
+  /// `image[0]`, `image[1]`, etc., or when field names are determined at runtime.
+  ///
+  /// Usage:
+  /// ```dart
+  /// await client.uploadMultipleFiles({
+  ///   'image[0]': File('/path/to/photo1.jpg'),
+  ///   'image[1]': File('/path/to/photo2.jpg'),
+  ///   'document': File('/path/to/report.pdf'),
+  /// });
+  /// ```
+  @POST('http://httpbin.org/post')
+  @MultiPart()
+  Future<void> uploadMultipleFiles(@Part() Map<String, File> files);
+
   @Headers(<String, String>{'accept': 'image/jpeg'})
   @GET('http://httpbin.org/image/jpeg')
   @DioResponseType(ResponseType.bytes)
   Future<List<int>> getFile();
+
+  @Headers(<String, String>{'accept': 'image/jpeg'})
+  @GET('http://httpbin.org/image/jpeg')
+  @DioResponseType(ResponseType.bytes)
+  Future<Uint8List> getFileAsUint8List();
 
   @POST('http://httpbin.org/post')
   @FormUrlEncoded()
@@ -262,6 +334,26 @@ abstract class RestClient {
     @Path('commentId') String commentId,
     @Part() Map<String, dynamic> body,
   );
+
+  // Extension type query parameter examples
+  @GET('/tasks')
+  Future<List<Task>> getTasksByUserId(@Query('userId') UserId userId);
+
+  @GET('/tasks')
+  Future<List<Task>> getTasksByCustomParam(
+    @Query('param') CustomParam? param,
+  );
+
+  // Generic type parameter examples - demonstrates the fix for issue #627
+  // Note: This works for simple types (String, int, Map, etc.) where the response
+  // data can be directly cast to T. For complex types that need deserialization,
+  // use a wrapper class with @JsonSerializable(genericArgumentFactories: true)
+  // like ApiResult<T> (see api_result.dart)
+  @GET('/generic/{id}')
+  Future<T> getGeneric<T>(@Path() String id);
+
+  @GET('/generic-nullable/{id}')
+  Future<T?> getGenericNullable<T>(@Path() String id);
 }
 
 @JsonSerializable()

@@ -1,3 +1,130 @@
+## 10.2.1
+
+- Support analyzer `'>=8.0.0 <10.0.0'` and update deprecated methods
+
+## 10.2.0
+
+- Extend analyzer dependency range to support analyzer 9.0.0 ('>=7.7.1 <10.0.0')
+- Note: Full analyzer 9.0.0 API migration is pending. For now, the package declares compatibility
+    but may require dependency_overrides to resolve to analyzer 8.x until all dependencies are updated
+- Add Response parameter to logError response data parsing callback
+- Add `format_output` builder option to control generation of `// dart format off/on` comments (default: `true`)
+  - Set `format_output: false` in `build.yaml` to omit format suppressing comments
+  - This allows combining retrofit with other generators (like riverpod) in a more predictable way
+
+## 10.1.0
+
+- Add lean_builder as a dependency to support experimental lean_builder integration
+- Fix package validation errors for lean_builder imports
+- Prepare infrastructure for optional lean_builder support
+
+## 10.0.10
+- Fix null check operator error when using Object type as @Body parameter by @Copilot in #814
+- Fix duplicate null check for nullable optional File parameters in multipart requests by @Copilot in #813
+- Fix List code generation to avoid incorrect Map casting by @Copilot in #811
+- Add support for global headers in @RESTapi annotation by @Copilot in #812
+- Fix @part annotation generating wrong variable reference for MultipartFile by @Copilot in #824
+- Fix nullable typed Map parameters in @Body() annotation by @Copilot in #823
+- Add test coverage for enum arrays in @part annotations by @Copilot in #822
+- Fix Map value deserialization for generic types with type parameters by @Copilot in #825
+
+## 10.0.8 (Unreleased)
+
+- Add experimental lean_builder support infrastructure
+- Add `lib/lean_builder.dart` entry point for lean_builder users
+- Add comprehensive documentation for lean_builder support
+- Note: lean_builder is now an **optional** dependency - it's not required unless you want to use lean_builder
+- Note: Full lean_builder implementation is pending until lean_builder reaches stability
+
+## 10.0.6
+
+- Update `protobuf` to 5.0.0
+
+## 10.0.5
+
+- Allow build 4.0.0.
+
+## 10.0.3
+
+- Require source_gen: 3.1.0, stop using deprecated `TypeChecker.fromRuntime` and use the new `TypeChecker.typeNamed` instead.
+
+## 10.0.2
+
+- Format generated code with default DartFormatter
+- Add `dart format off` and `dart format on` comments to generated code
+
+## 10.0.1
+
+- Fix dependencies versions
+
+## 10.0.0
+
+- Migrate to `Element2`
+- Updates minimum supported SDK version to Dart 3.8
+
+## 9.7.0
+
+- Upgrade build_runner to 2.5.4
+
+## 9.6.0
+
+ - Updates minimum supported SDK version to Dart 3.6
+
+## 9.5.0
+
+- Migrate enum value name resolve from `.name` to `.toString()`
+  `.name` is pretty limited to in terms of adjusting the value. Having resolve through `.toString()`
+  gives you high level of flexibility on changing the resulting request value. Another improvement
+  that this fix synchronizes the way of resolving values for individual enum values and for the list
+  of entities. Previously individual values where resolved through `.name` and list of enums via `.toString`
+  deeper inside `dio` client
+
+## 9.3.0
+
+- Added `@BodyExtra` annotation: Add individual fields to request body without defining complete DTO classes
+  - Support for adding dynamic fields to existing request bodies
+  - `expand` parameter (default: false) to control object field flattening behavior
+
+  Example(Combine fields):
+
+  ```dart
+  @http.POST('/path/')
+  Future<String> updateValue(@BodyExtra('id') int id, @BodyExtra('value') String value);
+  ```
+
+  Request body result:
+  
+  ```json
+  {"id": 123, "value": "some value"}
+  ```
+
+  Example(Combine objects):
+
+  ```dart
+  // pseudocode
+  class User {
+    int userId;
+    String userName;
+  }
+
+  class Settings {
+    int a;
+    int b;
+  }
+
+  @http.POST('/path/')
+  Future<String> updateValue(
+    @BodyExtra('user', expand: true) User user, 
+    @BodyExtra('settings', expand: true) Settings settings,
+  );
+  ```
+
+  Request body result:
+  
+  ```json
+  {"userId": 123, "userName": "hhh", "a": 1, "b": 2}
+  ```
+
 ## 9.2.0
 
 - Update protobuf version to 4.0.0
@@ -63,7 +190,7 @@
         return Either.right(response);
       }
       catch (e) {
-        return Either.left(ApiError(e))
+        return Either.left(ApiError(e));
       }
     }
   }

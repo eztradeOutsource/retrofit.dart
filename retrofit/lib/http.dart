@@ -26,17 +26,21 @@ enum Parser {
   /// For more detail, please visit 'https://github.com/k-paxian/dart-json-mapper'
   DartJsonMapper,
 
+  /// Each model class must add annotation '@MappableClass()'
+  /// For more detail, please visit 'https://github.com/schultek/dart_mappable'
+  DartMappable,
+
   /// Parse on a separate isolate using `compute` (Flutter only).
   ///
   /// Each model class must define a top-level function, taking the form
-  /// ```
+  /// ```dart
   /// FutureOr<T> deserializeT(Map<String, dynamic> json);
   /// FutureOr<dynamic> serializeTask(T object);
   /// ```
   ///
   /// If you want to handle lists of objects, either as return types or parameters, you should provide List counterparts.
   ///
-  /// ```
+  /// ```dart
   /// FutureOr<List<T>> deserializeTList(Map<String, dynamic> json);
   /// FutureOr<dynamic> serializeTList(List<T> objects);
   /// ```
@@ -44,7 +48,7 @@ enum Parser {
   /// E.g.
   /// ----
   /// _In file user.dart_
-  /// ```
+  /// ```dart
   /// User deserializeUser(Map<String, dynamic> json) => User.fromJson(json);
   /// List<User> deserializeUserList(List<Map<String, dynamic>> json) =>
   ///     json.map((e) => User.fromJson(e)).toList();
@@ -68,6 +72,7 @@ class RestApi {
     this.baseUrl,
     this.parser = Parser.JsonSerializable,
     this.callAdapter,
+    this.headers,
   });
 
   /// Set the API base URL.
@@ -86,8 +91,8 @@ class RestApi {
   /// * Endpoint: `foo/bar/`
   /// * Result: `http://example.com/foo/bar/`
   ///
-  /// When you specify a relative [baseUrl]. The [Dio] instance passed to the constructor should have it defined.
-  /// When you don't specify the [baseUrl]. The [Dio] instance passed to the constructor should have it defined.
+  /// When you specify a relative [baseUrl]. The `Dio` instance passed to the constructor should have it defined.
+  /// When you don't specify the [baseUrl]. The `Dio` instance passed to the constructor should have it defined.
   /// Otherwise the `path` field of any [HttpMethod] like [POST] should have the full URL.
 
   final String? baseUrl;
@@ -95,10 +100,38 @@ class RestApi {
   /// if you don't specify the [parser]. It will be [Parser.JsonSerializable]
   final Parser parser;
   final Type? callAdapter;
+
+  /// Global headers to be applied to all requests within this API.
+  ///
+  /// These headers will be included in every request made through this API interface.
+  /// Method-level headers specified with [@Headers] will override these global headers
+  /// if they have the same key.
+  ///
+  /// Example:
+  /// ```dart
+  /// @RestApi(
+  ///   baseUrl: "https://api.example.com",
+  ///   headers: {
+  ///     "User-Agent": "MyApp/1.0.0",
+  ///     "X-Platform": "mobile",
+  ///   },
+  /// )
+  /// abstract class ApiService {
+  ///   @GET("/endpoint")
+  ///   Future<Response> getData();
+  /// }
+  /// ```
+  final Map<String, dynamic>? headers;
 }
 
 @immutable
 class Method {
+  /// Creates a new HTTP method annotation with the specified [method] and [path].
+  ///
+  /// This is the base class for all HTTP method annotations like [GET], [POST], etc.
+  ///
+  /// * [method] - The HTTP method (e.g., 'GET', 'POST', 'PUT', etc.)
+  /// * [path] - The relative or absolute path for the endpoint
   const Method(
     this.method,
     this.path,
@@ -116,7 +149,7 @@ class Method {
 
 /// Make a `GET` request
 ///
-/// ```
+/// ```dart
 /// @GET("ip")
 /// Future<String> ip(@Query('query1') String query)
 /// ```
@@ -191,6 +224,36 @@ class Body {
   final bool nullToAbsent;
 }
 
+/// Use this annotation on a service method param when you want to add individual fields
+/// to the request body without defining a complete DTO class. This is useful when you
+/// need to include additional fields in the request body alongside existing data, or when
+/// you only need to send a few specific fields without creating a full data transfer object.
+///
+/// Unlike @Body which requires a complete DTO class to represent the entire request body,
+/// @BodyExtra allows you to define individual fields that will be merged into the final
+/// request body JSON. This provides more flexibility for scenarios where:
+/// - You need to add dynamic or conditional fields to an existing request
+/// - You want to avoid creating DTOs for simple field additions
+/// - You need to compose request bodies from multiple sources
+///
+/// Example:
+/// ```dart
+/// @POST("/post")
+/// Future<String> example(@Body UserDTO user, @BodyExtra("timestamp") int timestamp);
+/// ```
+/// Results in: {"name": "John", "email": "john@example.com", "timestamp": 1234567890}
+@immutable
+class BodyExtra {
+  const BodyExtra(this.value, {this.expand = false});
+
+  final String value;
+
+  /// Default is false. Controls how Object/Map values are handled:
+  /// - `true`: Object/Map fields are flattened to the request body root level
+  /// - `false`: The entire Object/Map is added as a nested field
+  final bool expand;
+}
+
 /// Use this annotation on a service method param when you want to indicate that no body should be
 /// generated for POST/PUT/DELETE requests.
 @immutable
@@ -200,7 +263,7 @@ class NoBody {
 
 /// Named pair for a form request.
 ///
-/// ```
+/// ```dart
 /// @POST("/post")
 /// Future<String> example(
 ///   @Field() int foo,
@@ -230,10 +293,10 @@ class Path {
 ///
 /// Simple Example:
 ///
-///```
+/// ```dart
 /// @GET("/get")
 /// Future<String> foo(@Query('bar') String query)
-///```
+/// ```
 /// Calling with `foo.friends(1)` yields `/get?bar=1`.
 @immutable
 class Query {
@@ -287,7 +350,7 @@ class MultiPart extends _MimeType {
 
 /// Denotes a single part of a multi-part request.
 /// Part parameters may not be null.
-/// ```
+/// ```dart
 /// @POST("/post")
 /// @MultiPart()
 /// Future<String> example(
@@ -318,6 +381,38 @@ class Part {
   final String? contentType;
 }
 
+/// Provides runtime metadata for a @Part annotation.
+/// Use this annotation to supply dynamic values like contentType or fileName
+/// that need to be determined at runtime rather than at compile time.
+///
+/// The parameter annotated with @PartMap should be a Map<String, dynamic>
+/// containing metadata for parts. Keys should be in the format:
+/// - `'partName_contentType'` for content type
+/// - `'partName_fileName'` for file name
+///
+/// Example:
+/// ```dart
+/// @POST('/upload')
+/// @MultiPart()
+/// Future<Response> upload({
+///   @Part(name: 'file') required File file,
+///   @PartMap() Map<String, dynamic>? partMetadata,
+/// });
+///
+/// // Usage:
+/// api.upload(
+///   file: myFile,
+///   partMetadata: {
+///     'file_contentType': 'image/jpeg',
+///     'file_fileName': 'photo.jpg',
+///   },
+/// );
+/// ```
+@immutable
+class PartMap {
+  const PartMap();
+}
+
 @immutable
 class CacheControl {
   const CacheControl({
@@ -342,7 +437,7 @@ class CacheControl {
 }
 
 /// Prevents `null` values from being converted to `absent` values in generated code for body.
-/// ```
+/// ```dart
 /// @PreventNullToAbsent()
 /// @POST("/post")
 /// Future<String> example(@Field('foo') String? foo);
